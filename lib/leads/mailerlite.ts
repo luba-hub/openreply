@@ -8,6 +8,7 @@ export interface LeadSubscriber {
   email: string;
   firstName: string | null;
   niche: string;
+  source?: string;
 }
 
 export class MailerLiteError extends Error {
@@ -23,8 +24,10 @@ export async function upsertSubscriber(sub: LeadSubscriber, fetchImpl: typeof fe
   if (!key || !group) throw new Error("MAILERLITE_API_KEY and MAILERLITE_GROUP_ID must be set");
   const nameField = process.env.MAILERLITE_FIELD_NAME || "name";
   const nicheField = process.env.MAILERLITE_FIELD_NICHE || "niche";
+  // The channel, for Email Automation's series (instagram | tiktok).
+  const sourceField = process.env.MAILERLITE_FIELD_SOURCE || "lead_source";
   const base = (process.env.MAILERLITE_API_URL || "https://connect.mailerlite.com").replace(/\/+$/, "");
-  const fields: Record<string, string> = { [nicheField]: sub.niche };
+  const fields: Record<string, string> = { [nicheField]: sub.niche, [sourceField]: sub.source ?? "instagram" };
   if (sub.firstName) fields[nameField] = sub.firstName;
   const res = await fetchImpl(`${base}/api/subscribers`, {
     method: "POST",

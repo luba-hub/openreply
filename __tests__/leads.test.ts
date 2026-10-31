@@ -96,7 +96,7 @@ describe("es-funnel: MailerLite", () => {
     const [url, init] = f.mock.calls[0];
     expect(url).toBe("https://connect.mailerlite.com/api/subscribers");
     expect(init.headers.Authorization).toBe("Bearer k_test");
-    expect(JSON.parse(init.body)).toEqual({ email: "ann@example.com", fields: { niche: "roofing", name: "Ann" }, groups: ["g1"] });
+    expect(JSON.parse(init.body)).toEqual({ email: "ann@example.com", fields: { niche: "roofing", lead_source: "instagram", name: "Ann" }, groups: ["g1"] });
   });
 
   it("a refusal says the status only (never the address); 422 isn't retried, 429 and 5xx are", async () => {
