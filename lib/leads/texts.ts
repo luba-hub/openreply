@@ -5,6 +5,9 @@
  */
 import type { Niche } from "@/lib/leads/niches";
 
+// 5 · the public reply under the comment, one of these at random (Luba's OK 10-31 via the Chief).
+export const PUBLIC_REPLIES = ["Sent you a DM! 📩", "Check your DMs, it's there."];
+
 export const TEXTS = {
   // 1 · reply to the comment word
   ask: "Hey, so glad you asked! The blueprint for {niche} is ready for you.\n\nTell me your first name and where to email it, and it's yours.",

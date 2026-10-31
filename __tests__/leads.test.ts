@@ -14,7 +14,7 @@ vi.mock("@/lib/queue/client", () => ({ getDMQueue: () => ({ add: vi.fn() }), MES
 
 import { parseLeadReply, redactEmails, redactEmailsDeep } from "@/lib/leads/parse";
 import { nicheFor, blueprintLink, allNicheWords, resetNichesForTests } from "@/lib/leads/niches";
-import { text, TEXTS } from "@/lib/leads/texts";
+import { text, TEXTS, PUBLIC_REPLIES } from "@/lib/leads/texts";
 import { upsertSubscriber, MailerLiteError } from "@/lib/leads/mailerlite";
 import { askText, handleLeadMessage, nextLeadStep, openLead, LEAD_TTL_MS, type LeadDeps } from "@/lib/leads/handle";
 
@@ -75,6 +75,10 @@ describe("es-funnel: the approved texts (dm-flow.md 69b303c1)", () => {
     expect(text("askEmail", { firstName: "Ann" })).toBe("Nice to meet you, Ann! And where do I email it?");
     expect(text("reask", {})).toBe("Oops, I think a letter went missing there. Can you type the email once more? Like name@company.com.");
     expect(text("blueprint", { firstName: "Ann", link: "https://x/roofing" })).toMatch(/^Here you go, Ann: https:\/\/x\/roofing\n\nFind yourself at the top\.[\s\S]*I sent a copy to your inbox too\.$/);
+  });
+
+  it("the public replies, as approved", () => {
+    expect(PUBLIC_REPLIES).toEqual(["Sent you a DM! 📩", "Check your DMs, it's there."]);
   });
 
   it("no first name: \"Here you go: <link>\", no stray field", () => {

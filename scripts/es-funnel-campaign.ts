@@ -1,10 +1,10 @@
 // es-funnel: the one niche campaign on a connected Instagram account. Any post or reel, all the comment words
-// in config/niches.json, the DM asks for a first name and email (lib/leads/texts.ts, as approved), collectLead on. Run it again
+// in config/niches.json, the DM asks for a first name and email and a public reply says so (lib/leads/texts.ts, as approved), collectLead on. Run it again
 // after niches.json changes: it updates the same campaign (by name) and creates nothing twice.
 //   npx tsx scripts/es-funnel-campaign.ts <instagram username> [--off]
 import { prisma } from "@/lib/db/client";
 import { allNicheWords } from "@/lib/leads/niches";
-import { TEXTS } from "@/lib/leads/texts";
+import { PUBLIC_REPLIES, TEXTS } from "@/lib/leads/texts";
 
 const NAME = "Niche blueprint (name + email)";
 const username = process.argv[2]?.replace(/^@/, "");
@@ -18,7 +18,7 @@ async function main() {
   const data = {
     matchAnyPost: true, postId: null, keywords: allNicheWords(), matchAnyWord: false, wholeWordMatch: true,
     dmMessage: ask, collectLead: true, dmTriggerEnabled: false, openingDmEnabled: false, requireFollow: false,
-    publicReplyEnabled: false, followUpEnabled: false, isActive: !off,
+    publicReplyEnabled: true, publicReplyMessages: PUBLIC_REPLIES, followUpEnabled: false, isActive: !off,
   };
   const found = await prisma.automation.findFirst({ where: { instagramAccountId: account.id, name: NAME } });
   const saved = found
