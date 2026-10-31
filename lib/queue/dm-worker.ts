@@ -1,4 +1,5 @@
 import { askText, handleLeadMessage, openLead } from "@/lib/leads/handle";
+import { redactEmails } from "@/lib/leads/parse";
 import {
   classifySendError,
   hasLegacyUnconfirmedDelivery,
@@ -289,6 +290,8 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
     originalMediaId,
   } = job.data;
   const requeueAttempt = job.data.requeueAttempt ?? 0;
+  // es-funnel: what's stored of a comment never holds an email address (matching uses the text as written).
+  const storedCommentText = redactEmails(commentText);
 
   const automations = await prisma.automation.findMany({
     where: {
@@ -383,7 +386,7 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
           instagramAccountId: automation.instagramAccountId,
           commenterId,
           commenterName,
-          commentText,
+          commentText: storedCommentText,
           commentId,
           matchedKeyword: matchResult.matchedKeyword,
           status: "FAILED",
@@ -417,7 +420,7 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
           instagramAccountId: automation.instagramAccountId,
           commenterId,
           commenterName,
-          commentText,
+          commentText: storedCommentText,
           commentId,
           matchedKeyword: matchResult.matchedKeyword,
           status: "FAILED",
@@ -437,7 +440,7 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
         workspaceId: automation.workspaceId,
         automationId: automation.id,
         instagramAccountId: automation.instagramAccountId,
-        commenterId, commenterName, commentText, commentId,
+        commenterId, commenterName, commentText: storedCommentText, commentId,
         matchedKeyword: matchResult.matchedKeyword,
         status: "PENDING",
       },
@@ -1292,7 +1295,15 @@ async function processFollowUp(job: Job<ProcessFollowUpJob>): Promise<void> {
 async function processMessage(job: Job<ProcessMessageJob>): Promise<void> {
   // es-funnel: a reply to an open name+email ask is handled there, never by the
   // keyword triggers; then the reply's text leaves the stored job.
-  if (await handleLeadMessage(job.data)) {
+  let handled: boolean;
+  try {
+    handled = await handleLeadMessage(job.data);
+  } catch (error) {
+    // The last try failed: the reply (it may hold an email) doesn't stay in the failed job either.
+    if (job.attemptsMade + 1 >= (job.opts?.attempts ?? 1)) await job.updateData({ ...job.data, messageText: "[lead reply]" });
+    throw error;
+  }
+  if (handled) {
     await job.updateData({ ...job.data, messageText: "[lead reply]" });
     return;
   }

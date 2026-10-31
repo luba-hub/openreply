@@ -1804,3 +1804,23 @@ describe("DM Worker — es-funnel lead step", () => {
     expect(updateData).toHaveBeenCalledWith(expect.objectContaining({ messageText: "[lead reply]" }));
   });
 });
+
+describe("DM Worker — es-funnel: nothing stored holds an email (QG 10-31)", () => {
+  it("a comment with an email in it is matched as written and stored with the address replaced", async () => {
+    await getProcessor()(createMockJob({ ...mockJobData, commentText: "LINK please, ann@example.com" }));
+    const stored = JSON.stringify([...mockPrisma.dmLog.upsert.mock.calls, ...mockPrisma.dmLog.create.mock.calls]);
+    expect(stored).toContain("LINK please, [email]");
+    expect(stored).not.toContain("ann@example.com");
+  });
+
+  it("a lead reply whose last try fails leaves no text in the failed job; an earlier try keeps it for the retry", async () => {
+    mockHandleLeadMessage.mockRejectedValue(new Error("MailerLite answered 503"));
+    const job = (attemptsMade: number) => ({ name: "process-message", data: { instagramAccountId: "ig_456", messageId: "m", messageText: "Ann ann@example.com", senderId: "u" }, id: "m", attemptsMade, opts: { attempts: 3 }, updateData: vi.fn() });
+    const early = job(0);
+    await expect(getProcessor()(early as never)).rejects.toThrow(/503/);
+    expect(early.updateData).not.toHaveBeenCalled();
+    const last = job(2);
+    await expect(getProcessor()(last as never)).rejects.toThrow(/503/);
+    expect(last.updateData).toHaveBeenCalledWith(expect.objectContaining({ messageText: "[lead reply]" }));
+  });
+});
