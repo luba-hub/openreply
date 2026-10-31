@@ -13,9 +13,10 @@ vi.mock("@/lib/instagram/context", () => ({ createInstagramContext: mockCreateCo
 vi.mock("@/lib/queue/client", () => ({ getDMQueue: () => ({ add: vi.fn() }), MESSAGE_JOB_NAME: "process-message" }));
 
 import { parseLeadReply, redactEmails, redactEmailsDeep } from "@/lib/leads/parse";
-import { nicheFor, blueprintUrl, allNicheWords, resetNichesForTests } from "@/lib/leads/niches";
+import { nicheFor, blueprintLink, allNicheWords, resetNichesForTests } from "@/lib/leads/niches";
+import { text, TEXTS } from "@/lib/leads/texts";
 import { upsertSubscriber, MailerLiteError } from "@/lib/leads/mailerlite";
-import { handleLeadMessage, nextLeadStep, openLead, LEAD_TTL_MS, type LeadDeps } from "@/lib/leads/handle";
+import { askText, handleLeadMessage, nextLeadStep, openLead, LEAD_TTL_MS, type LeadDeps } from "@/lib/leads/handle";
 
 describe("es-funnel: reading the reply", () => {
   it.each([
@@ -41,15 +42,48 @@ describe("es-funnel: niches", () => {
   it("all 60 comment words, each with a slug and a label", () => {
     expect(allNicheWords()).toHaveLength(60);
     expect(nicheFor("roofing")).toMatchObject({ word: "ROOFING", slug: "roofing" });
-    expect(nicheFor("REALTOR")?.slug).toBe("real-estate");
     expect(nicheFor("NOPE")).toBeNull();
     expect(nicheFor(null)).toBeNull();
   });
 
-  it("the blueprint link is the base plus the slug", () => {
-    expect(blueprintUrl(nicheFor("CONSULTANT")!)).toBe("https://es.example/blueprint/consultants");
+  it("the slug is the word in lowercase (the Chief 10-31)", () => {
+    expect(nicheFor("REALTOR")?.slug).toBe("realtor");
+    expect(nicheFor("CONSULTANT")?.slug).toBe("consultant");
+  });
+
+  it("the niche's page while it's there, else the general one; each answer kept 10 minutes", async () => {
+    const ok = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    expect(await blueprintLink(nicheFor("ROOFING")!, ok, 0)).toBe("https://es.example/blueprint/roofing");
+    expect(ok.mock.calls[0][1].method).toBe("HEAD");
+    const missing = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
+    expect(await blueprintLink(nicheFor("HVAC")!, missing, 0)).toBe("https://es.example/blueprint");
+    expect(await blueprintLink(nicheFor("POOL")!, vi.fn().mockRejectedValue(new Error("down")), 0)).toBe("https://es.example/blueprint");
+    const again = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    expect(await blueprintLink(nicheFor("HVAC")!, again, 60_000)).toBe("https://es.example/blueprint");
+    expect(again).not.toHaveBeenCalled();
+    expect(await blueprintLink(nicheFor("HVAC")!, again, 11 * 60_000)).toBe("https://es.example/blueprint/hvac");
     delete process.env.BLUEPRINT_BASE_URL;
-    expect(() => blueprintUrl(nicheFor("CONSULTANT")!)).toThrow(/BLUEPRINT_BASE_URL/);
+    await expect(blueprintLink(nicheFor("SOLAR")!, ok, 0)).rejects.toThrow(/BLUEPRINT_BASE_URL/);
+  });
+});
+
+describe("es-funnel: the approved texts (dm-flow.md 69b303c1)", () => {
+  beforeEach(() => { resetNichesForTests(); delete process.env.LEAD_BLUEPRINT_MESSAGE; });
+
+  it("pasted as is, fields filled", () => {
+    expect(askText(TEXTS.ask, "PLUMBING")).toBe("Hey, so glad you asked! The blueprint for plumbing companies is ready for you.\n\nTell me your first name and where to email it, and it's yours.");
+    expect(text("askEmail", { firstName: "Ann" })).toBe("Nice to meet you, Ann! And where do I email it?");
+    expect(text("reask", {})).toBe("Oops, I think a letter went missing there. Can you type the email once more? Like name@company.com.");
+    expect(text("blueprint", { firstName: "Ann", link: "https://x/roofing" })).toMatch(/^Here you go, Ann: https:\/\/x\/roofing\n\nFind yourself at the top\.[\s\S]*I sent a copy to your inbox too\.$/);
+  });
+
+  it("no first name: \"Here you go: <link>\", no stray field", () => {
+    expect(text("blueprint", { firstName: null, link: "https://x/roofing" }).split("\n")[0]).toBe("Here you go: https://x/roofing");
+  });
+
+  it("the environment overrides a text", () => {
+    process.env.LEAD_BLUEPRINT_MESSAGE = "Link {link}";
+    expect(text("blueprint", { link: "L" })).toBe("Link L");
   });
 });
 
@@ -100,7 +134,7 @@ describe("es-funnel: the lead step", () => {
     deps = {
       send: vi.fn().mockResolvedValue({}), upsert: vi.fn().mockResolvedValue(undefined),
       reserve: vi.fn().mockResolvedValue({ allowed: true, reserved: true, shouldRequeue: false, requeueDelayMs: 0 }),
-      release: vi.fn(), requeue: vi.fn(), now: () => new Date(),
+      release: vi.fn(), requeue: vi.fn(), link: vi.fn().mockResolvedValue("https://es.example/blueprint/roofing"), now: () => new Date(),
     } as never;
   });
 
@@ -119,16 +153,33 @@ describe("es-funnel: the lead step", () => {
     expect(await handleLeadMessage(job("Ann ann@example.com"), deps)).toBe(true);
     expect(deps.upsert).toHaveBeenCalledWith({ email: "ann@example.com", firstName: "Ann", niche: "roofing" });
     expect(deps.send).toHaveBeenCalledWith(expect.objectContaining({ userId: "u_1", message: expect.stringContaining("https://es.example/blueprint/roofing") }));
-    expect(deps.send.mock.calls[0][0].message).toContain("Ann");
+    expect(deps.send.mock.calls[0][0].message).toMatch(/^Here you go, Ann: https:\/\/es.example\/blueprint\/roofing/);
     expect(states()).toEqual(["SYNCED", "DONE"]);
+    expect(mockPrisma.lead.update.mock.calls.at(-1)![0].data.firstName).toBeNull();
     expect(logged()).toContain('"status":"SENT"');
     expect(logged()).not.toContain("ann@example.com");
   });
 
   it("the texts come from the environment when set (her approved words)", async () => {
-    process.env.LEAD_BLUEPRINT_MESSAGE = "Here you go {name}: {link}";
+    process.env.LEAD_BLUEPRINT_MESSAGE = "Here you go {first_name}: {link}";
     await handleLeadMessage(job("Ann ann@example.com"), deps);
     expect(deps.send.mock.calls[0][0].message).toBe("Here you go Ann: https://es.example/blueprint/roofing");
+  });
+
+  it("only a name: \"…where do I email it?\", the name kept for the link; then the email brings it, the name cleared", async () => {
+    await handleLeadMessage(job("Ann"), deps);
+    expect(deps.send.mock.calls[0][0].message).toBe("Nice to meet you, Ann! And where do I email it?");
+    expect(mockPrisma.lead.update.mock.calls[0][0].data).toMatchObject({ state: "REASKED", firstName: "Ann" });
+    vi.clearAllMocks(); mockPrisma.instagramAccount.findFirst.mockResolvedValue(account); mockPrisma.lead.findUnique.mockResolvedValue(lead({ state: "REASKED", firstName: "Ann" }));
+    await handleLeadMessage(job("ann@example.com"), deps);
+    expect(deps.upsert).toHaveBeenCalledWith({ email: "ann@example.com", firstName: "Ann", niche: "roofing" });
+    expect(deps.send.mock.calls[0][0].message).toMatch(/^Here you go, Ann:/);
+    expect(mockPrisma.lead.update.mock.calls.at(-1)![0].data).toMatchObject({ state: "DONE", firstName: null });
+  });
+
+  it("an address that isn't one gets \"a letter went missing\"", async () => {
+    await handleLeadMessage(job("ann@example"), deps);
+    expect(deps.send.mock.calls[0][0].message).toMatch(/^Oops, I think a letter went missing/);
   });
 
   it("no email: one re-ask, then nothing more", async () => {

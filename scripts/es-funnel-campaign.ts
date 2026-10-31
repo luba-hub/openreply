@@ -1,15 +1,16 @@
 // es-funnel: the one niche campaign on a connected Instagram account. Any post or reel, all the comment words
-// in config/niches.json, the DM asks for a first name and email (LEAD_ASK_MESSAGE), collectLead on. Run it again
+// in config/niches.json, the DM asks for a first name and email (lib/leads/texts.ts, as approved), collectLead on. Run it again
 // after niches.json changes: it updates the same campaign (by name) and creates nothing twice.
 //   npx tsx scripts/es-funnel-campaign.ts <instagram username> [--off]
 import { prisma } from "@/lib/db/client";
 import { allNicheWords } from "@/lib/leads/niches";
+import { TEXTS } from "@/lib/leads/texts";
 
 const NAME = "Niche blueprint (name + email)";
 const username = process.argv[2]?.replace(/^@/, "");
 const off = process.argv.includes("--off");
 if (!username) { console.error("usage: npx tsx scripts/es-funnel-campaign.ts <instagram username> [--off]"); process.exit(2); }
-const ask = process.env.LEAD_ASK_MESSAGE || "Hi {username}! Reply with your first name and email and I'll send you the blueprint.";
+const ask = process.env.LEAD_ASK_MESSAGE || TEXTS.ask; // {niche} is filled per comment by the worker
 
 const account = await prisma.instagramAccount.findFirst({ where: { username } });
 if (!account) { console.error(`no connected account @${username}; connect it in Settings first`); process.exit(1); }

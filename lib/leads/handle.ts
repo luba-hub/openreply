@@ -2,8 +2,9 @@
  * es-funnel: the person's reply to the name+email ask. With an email: MailerLite
  * (one group, their first name, the niche of the word they commented), then the
  * niche's blueprint link. Without one: one re-ask, then nothing more. Every DM it
- * sends takes a slot from the account's hourly cap and is logged; the reply's
- * name and email are never stored or logged.
+ * sends takes a slot from the account's hourly cap and is logged. The email is
+ * never stored or logged; a first name given without an email waits on the lead
+ * until the link goes out, then it's cleared.
  */
 import { prisma } from "@/lib/db/client";
 import { createInstagramContext } from "@/lib/instagram/context";
@@ -11,7 +12,8 @@ import { sendDirectMessage } from "@/lib/instagram/send-messages";
 import { reserveDMSlot, releaseDMSlot } from "@/lib/utils/rate-limiter";
 import { getDMQueue, MESSAGE_JOB_NAME, type ProcessMessageJob } from "@/lib/queue/client";
 import { parseLeadReply, redactEmails, type LeadReply } from "@/lib/leads/parse";
-import { nicheFor, blueprintUrl } from "@/lib/leads/niches";
+import { nicheFor, blueprintLink, type Niche } from "@/lib/leads/niches";
+import { text, nichePlain } from "@/lib/leads/texts";
 import { upsertSubscriber, MailerLiteError } from "@/lib/leads/mailerlite";
 import type { LeadState } from "@/app/generated/prisma/client";
 
@@ -27,23 +29,13 @@ export function nextLeadStep(state: LeadState, reply: LeadReply): LeadStep {
   return state === "ASKED" ? "reask" : "stop";
 }
 
-// Placeholders until Luba's approved texts are set in the environment.
-const fill = (t: string, v: Record<string, string>) => t.replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
-export function blueprintText(name: string | null, link: string, niche: string) {
-  return fill(process.env.LEAD_BLUEPRINT_MESSAGE || "Thanks{comma_name}! Here's your blueprint for {niche}: {link}", {
-    comma_name: name ? `, ${name}` : "", name: name ?? "", link, niche,
-  });
-}
-export function reaskText() {
-  return process.env.LEAD_REASK_MESSAGE || "Reply with your first name and email and I'll send the blueprint over.";
-}
-
 export interface LeadDeps {
   send: typeof sendDirectMessage;
   upsert: typeof upsertSubscriber;
   reserve: typeof reserveDMSlot;
   release: typeof releaseDMSlot;
   requeue: (data: ProcessMessageJob, delayMs: number) => Promise<unknown>;
+  link: (niche: Niche) => Promise<string>;
   now: () => Date;
 }
 
@@ -57,6 +49,7 @@ const defaultDeps: LeadDeps = {
       delay: delayMs,
       jobId: `message_${data.instagramAccountId}_${Buffer.from(data.messageId).toString("base64url")}_rq${(data.requeueAttempt ?? 0) + 1}`,
     }),
+  link: (niche) => blueprintLink(niche),
   now: () => new Date(),
 };
 
@@ -90,7 +83,7 @@ export async function handleLeadMessage(data: ProcessMessageJob, deps: LeadDeps 
       },
       update: { status, errorMessage, ...(status === "SENT" ? { dmSentAt: deps.now() } : {}) },
     });
-  const setState = (state: LeadState, extra: Record<string, Date> = {}) =>
+  const setState = (state: LeadState, extra: Record<string, Date | string | null> = {}) =>
     prisma.lead.update({ where: { id: lead.id }, data: { state, ...extra } });
 
   const niche = nicheFor(lead.keyword);
@@ -114,21 +107,24 @@ export async function handleLeadMessage(data: ProcessMessageJob, deps: LeadDeps 
   let sent = false;
   try {
     const context = await createInstagramContext(account, `lead:${lead.id}:${messageId}`);
+    const firstName = reply.firstName ?? lead.firstName;
+    // No email: their name alone gets 1b ("…where do I email it?"), anything that tried to be an address gets 2.
+    const reask = () => (!messageText.includes("@") && reply.firstName ? text("askEmail", { firstName }) : text("reask", {}));
     if (step === "reask") {
-      await deps.send({ context, instagramAccountId, userId: senderId, message: reaskText() });
+      await deps.send({ context, instagramAccountId, userId: senderId, message: reask() });
       sent = true;
-      await setState("REASKED");
+      await setState("REASKED", { firstName: firstName ?? null });
       await log("SENT", null);
       return true;
     }
     if (step === "sync") {
       try {
-        await deps.upsert({ email: reply.email as string, firstName: reply.firstName, niche: niche.slug });
+        await deps.upsert({ email: reply.email as string, firstName, niche: niche.slug });
       } catch (error) {
         if (error instanceof MailerLiteError && !error.retryable) {
           // MailerLite refused the address: ask once more if this was the first try, else stop.
           if (lead.state === "ASKED") {
-            await deps.send({ context, instagramAccountId, userId: senderId, message: reaskText() });
+            await deps.send({ context, instagramAccountId, userId: senderId, message: text("reask", {}) });
             sent = true;
             await setState("REASKED");
             await log("SENT", `${error.message}; asked again`);
@@ -141,11 +137,12 @@ export async function handleLeadMessage(data: ProcessMessageJob, deps: LeadDeps 
         }
         throw error;
       }
-      await setState("SYNCED", { syncedAt: deps.now() });
+      await setState("SYNCED", { syncedAt: deps.now(), firstName: firstName ?? null });
     }
-    await deps.send({ context, instagramAccountId, userId: senderId, message: blueprintText(reply.firstName, blueprintUrl(niche), niche.label) });
+    const link = await deps.link(niche);
+    await deps.send({ context, instagramAccountId, userId: senderId, message: text("blueprint", { firstName, link }) });
     sent = true;
-    await setState("DONE", { blueprintSentAt: deps.now() });
+    await setState("DONE", { blueprintSentAt: deps.now(), firstName: null });
     await log("SENT", null);
     return true;
   } catch (error) {
@@ -158,10 +155,16 @@ export async function handleLeadMessage(data: ProcessMessageJob, deps: LeadDeps 
 /** After the name+email ask went out on a comment: the person's open lead (a new comment restarts it). */
 export async function openLead(a: { workspaceId: string; automationId: string; instagramAccountId: string; igUserId: string; keyword: string | null }) {
   if (!a.keyword || !nicheFor(a.keyword)) return null;
-  const data = { workspaceId: a.workspaceId, automationId: a.automationId, keyword: a.keyword.toUpperCase(), state: "ASKED" as const, askedAt: new Date(), syncedAt: null, blueprintSentAt: null };
+  const data = { workspaceId: a.workspaceId, automationId: a.automationId, keyword: a.keyword.toUpperCase(), state: "ASKED" as const, askedAt: new Date(), syncedAt: null, blueprintSentAt: null, firstName: null };
   return prisma.lead.upsert({
     where: { instagramAccountId_igUserId: { instagramAccountId: a.instagramAccountId, igUserId: a.igUserId } },
     create: { ...data, instagramAccountId: a.instagramAccountId, igUserId: a.igUserId },
     update: data,
   });
+}
+
+/** The ask (the private reply on their comment) with {niche} in plain words for the word they commented. */
+export function askText(template: string, keyword: string | null) {
+  const niche = nicheFor(keyword);
+  return niche ? template.replace(/\{niche\}/g, nichePlain(niche)) : template;
 }

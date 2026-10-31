@@ -240,8 +240,8 @@ model Automation {
   @@index([postId])
 }
 
-// es-funnel: one open name+email ask per person per account. Holds the state and the
-// matched word only; the reply's name and email go to MailerLite and are never stored.
+// es-funnel: one open name+email ask per person per account. Holds the state and the matched word;
+// the email goes to MailerLite and is never stored; a first name given alone waits here until the link goes out.
 model Lead {
   id                 String    @id @default(cuid())
   workspaceId        String
@@ -250,6 +250,7 @@ model Lead {
   igUserId           String
   keyword            String
   state              LeadState @default(ASKED)
+  firstName          String?
   askedAt            DateTime  @default(now())
   syncedAt           DateTime?
   blueprintSentAt    DateTime?

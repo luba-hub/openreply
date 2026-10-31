@@ -1,7 +1,7 @@
 [
   {
     "word": "CONSULTANT",
-    "slug": "consultants",
+    "slug": "consultant",
     "label": "Solo consultants & coaches"
   },
   {
@@ -11,7 +11,7 @@
   },
   {
     "word": "REALTOR",
-    "slug": "real-estate",
+    "slug": "realtor",
     "label": "Real estate teams"
   },
   {
@@ -21,12 +21,12 @@
   },
   {
     "word": "MEDSPA",
-    "slug": "med-spa",
+    "slug": "medspa",
     "label": "Med spas & estheticians"
   },
   {
     "word": "LAWFIRM",
-    "slug": "law-firm",
+    "slug": "lawfirm",
     "label": "Law firms"
   },
   {

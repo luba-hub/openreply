@@ -31,13 +31,27 @@ export function allNicheWords(): string[] {
   return [...load().keys()];
 }
 
-/** BLUEPRINT_BASE_URL + slug, e.g. https://efficiencysprint.com/blueprint/consultants */
-export function blueprintUrl(niche: Niche): string {
+/**
+ * The niche's blueprint page (BLUEPRINT_BASE_URL/<slug>) while it's there; until the Website Lead builds it,
+ * the general one (BLUEPRINT_BASE_URL itself; the Chief 10-31). Each answer is kept 10 minutes.
+ */
+const pages = new Map<string, { ok: boolean; at: number }>();
+export async function blueprintLink(niche: Niche, fetchImpl: typeof fetch = fetch, now = Date.now()): Promise<string> {
   const base = (process.env.BLUEPRINT_BASE_URL || "").replace(/\/+$/, "");
   if (!base) throw new Error("BLUEPRINT_BASE_URL is not set");
-  return `${base}/${encodeURIComponent(niche.slug)}`;
+  const url = `${base}/${encodeURIComponent(niche.slug)}`;
+  const seen = pages.get(url);
+  if (seen && now - seen.at < 10 * 60_000) return seen.ok ? url : base;
+  let ok = false;
+  try {
+    const res = await fetchImpl(url, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(5000) });
+    ok = res.status >= 200 && res.status < 300;
+  } catch { /* the site didn't answer: the general page */ }
+  pages.set(url, { ok, at: now });
+  return ok ? url : base;
 }
 
 export function resetNichesForTests() {
   cache = null;
+  pages.clear();
 }

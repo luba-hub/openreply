@@ -14,6 +14,7 @@ CREATE TABLE "Lead" (
     "igUserId" TEXT NOT NULL,
     "keyword" TEXT NOT NULL,
     "state" "LeadState" NOT NULL DEFAULT 'ASKED',
+    "firstName" TEXT,
     "askedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "syncedAt" TIMESTAMP(3),
     "blueprintSentAt" TIMESTAMP(3),

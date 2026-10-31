@@ -1,4 +1,4 @@
-import { handleLeadMessage, openLead } from "@/lib/leads/handle";
+import { askText, handleLeadMessage, openLead } from "@/lib/leads/handle";
 import {
   classifySendError,
   hasLegacyUnconfirmedDelivery,
@@ -751,7 +751,8 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
         }
       } else {
         const dmMessage = renderMessageWithTracking({
-          message: automation.dmMessage,
+          // es-funnel: the ask names the niche of the word they commented.
+          message: automation.collectLead ? askText(automation.dmMessage, matchResult.matchedKeyword) : automation.dmMessage,
           commenterName,
           trackedLinks: automation.trackedLinks,
           recipientToken: hashRecipientId(commenterId),

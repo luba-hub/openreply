@@ -63,6 +63,7 @@ const {
 vi.mock("@/lib/leads/handle", () => ({
   handleLeadMessage: mockHandleLeadMessage,
   openLead: mockOpenLead,
+  askText: (template: string, keyword: string | null) => `${template} [niche of ${keyword}]`,
 }));
 
 vi.mock("@/lib/db/client", () => ({
@@ -1783,11 +1784,13 @@ describe("DM Worker — es-funnel lead step", () => {
     mockMatchKeywords.mockReturnValue({ matched: true, matchedKeyword: "ROOFING" });
     await getProcessor()(createMockJob());
     expect(mockOpenLead).toHaveBeenCalledWith(expect.objectContaining({ igUserId: mockJobData.commenterId, keyword: "ROOFING", automationId: mockAutomation.id }));
+    expect(JSON.stringify(mockSendPrivateReply.mock.calls)).toContain("[niche of ROOFING]");
   });
 
   it("opens no lead on a campaign that doesn't collect one", async () => {
     await getProcessor()(createMockJob());
     expect(mockOpenLead).not.toHaveBeenCalled();
+    expect(JSON.stringify(mockSendPrivateReply.mock.calls)).not.toContain("[niche of");
   });
 
   it("a reply to an open ask goes to the lead step only, and its text leaves the stored job", async () => {
