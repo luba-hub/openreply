@@ -16,7 +16,9 @@
 
 import Redis from "ioredis";
 
-const RATE_LIMIT_MAX = 750; // private replies per hour, per Meta's documented cap
+// private replies per hour, per Meta's documented cap. es-funnel: DM_HOURLY_CAP lowers it
+// (never raises it), so an account stays well under Meta's limit.
+const RATE_LIMIT_MAX = Math.min(750, Math.max(1, Math.floor(Number(process.env.DM_HOURLY_CAP)) || 750));
 const RATE_LIMIT_WINDOW = 3600; // 1 hour in seconds
 const REQUEUE_DELAY_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_REQUEUE_ATTEMPTS = 3;

@@ -5,6 +5,7 @@ import {
   verifyWebhookSignature,
 } from "@/lib/meta/webhook";
 import { processInstagramWebhook } from "@/lib/queue/process-webhook";
+import { redactEmails } from "@/lib/leads/parse";
 
 
 export async function GET(request: NextRequest) {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
           payload: {
             hadSignatureHeader: Boolean(signature),
             bodyLength: rawBody.length,
-            bodyPreview: rawBody.slice(0, 200),
+            bodyPreview: redactEmails(rawBody.slice(0, 200)),
           },
         },
       })

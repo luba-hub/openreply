@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db/client';
 import { getDMQueue, MESSAGE_JOB_NAME, POSTBACK_JOB_NAME } from '@/lib/queue/client';
 import { parseCommentEvents, parseMessageEvents, parsePostbackEvents, parseReadEvents } from '@/lib/meta/webhook';
 import { Prisma, type InstagramProvider } from '@/app/generated/prisma/client';
+import { redactEmailsDeep } from '@/lib/leads/parse';
 
 const OPENING_DM_READ_FALLBACK_DELAY_MS = 5 * 60 * 1000;
 type InstagramPayload = Parameters<typeof parseCommentEvents>[0];
@@ -24,7 +25,8 @@ export async function processInstagramWebhook({ payload: incoming, provider, wor
         typeof payload === "object" && payload && "object" in payload
           ? String(payload.object)
           : null,
-      payload: payload as unknown as Prisma.InputJsonValue,
+      // es-funnel: a lead's reply carries their email; the stored copy never does.
+      payload: redactEmailsDeep(payload) as unknown as Prisma.InputJsonValue,
       ...(workspaceId ? { workspaceId } : {}),
       status: "PENDING",
     },

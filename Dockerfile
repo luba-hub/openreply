@@ -47,6 +47,8 @@ COPY --from=build /app/lib ./lib
 COPY --from=build /app/worker ./worker
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/scripts ./scripts
+# es-funnel: the comment word → niche map
+COPY --from=build /app/config ./config
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --from=build /app/next.config.ts ./next.config.ts
 COPY --from=build /app/tsconfig.json ./tsconfig.json

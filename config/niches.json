@@ -1,0 +1,302 @@
+[
+  {
+    "word": "CONSULTANT",
+    "slug": "consultants",
+    "label": "Solo consultants & coaches"
+  },
+  {
+    "word": "PLUMBING",
+    "slug": "plumbing",
+    "label": "Plumbing companies"
+  },
+  {
+    "word": "REALTOR",
+    "slug": "real-estate",
+    "label": "Real estate teams"
+  },
+  {
+    "word": "ACCOUNTING",
+    "slug": "accounting",
+    "label": "Accounting & bookkeeping firms"
+  },
+  {
+    "word": "MEDSPA",
+    "slug": "med-spa",
+    "label": "Med spas & estheticians"
+  },
+  {
+    "word": "LAWFIRM",
+    "slug": "law-firm",
+    "label": "Law firms"
+  },
+  {
+    "word": "FITNESS",
+    "slug": "fitness",
+    "label": "Fitness & wellness studios"
+  },
+  {
+    "word": "HVAC",
+    "slug": "hvac",
+    "label": "HVAC companies"
+  },
+  {
+    "word": "ROOFING",
+    "slug": "roofing",
+    "label": "Roofing contractors"
+  },
+  {
+    "word": "ELECTRIC",
+    "slug": "electric",
+    "label": "Electrical contractors"
+  },
+  {
+    "word": "REMODEL",
+    "slug": "remodel",
+    "label": "Remodeling & general contractors"
+  },
+  {
+    "word": "LANDSCAPE",
+    "slug": "landscape",
+    "label": "Landscaping & lawn care"
+  },
+  {
+    "word": "PEST",
+    "slug": "pest",
+    "label": "Pest control"
+  },
+  {
+    "word": "CLEANING",
+    "slug": "cleaning",
+    "label": "Cleaning services"
+  },
+  {
+    "word": "POOL",
+    "slug": "pool",
+    "label": "Pool service & repair"
+  },
+  {
+    "word": "PAINTING",
+    "slug": "painting",
+    "label": "Painting contractors"
+  },
+  {
+    "word": "HANDYMAN",
+    "slug": "handyman",
+    "label": "Handyman services"
+  },
+  {
+    "word": "FLOORING",
+    "slug": "flooring",
+    "label": "Flooring installers"
+  },
+  {
+    "word": "GARAGE",
+    "slug": "garage",
+    "label": "Garage door companies"
+  },
+  {
+    "word": "SOLAR",
+    "slug": "solar",
+    "label": "Solar installers"
+  },
+  {
+    "word": "MOVING",
+    "slug": "moving",
+    "label": "Moving companies"
+  },
+  {
+    "word": "AUTOSHOP",
+    "slug": "autoshop",
+    "label": "Auto repair shops"
+  },
+  {
+    "word": "PROPERTY",
+    "slug": "property",
+    "label": "Property management companies"
+  },
+  {
+    "word": "INSURANCE",
+    "slug": "insurance",
+    "label": "Insurance agencies"
+  },
+  {
+    "word": "ADVISOR",
+    "slug": "advisor",
+    "label": "Financial advisors"
+  },
+  {
+    "word": "MORTGAGE",
+    "slug": "mortgage",
+    "label": "Mortgage brokers"
+  },
+  {
+    "word": "MSP",
+    "slug": "msp",
+    "label": "IT services & MSPs"
+  },
+  {
+    "word": "STAFFING",
+    "slug": "staffing",
+    "label": "Staffing & recruiting firms"
+  },
+  {
+    "word": "ARCHITECT",
+    "slug": "architect",
+    "label": "Architecture firms"
+  },
+  {
+    "word": "ENGINEERING",
+    "slug": "engineering",
+    "label": "Engineering firms"
+  },
+  {
+    "word": "FRACTIONAL",
+    "slug": "fractional",
+    "label": "Fractional executives"
+  },
+  {
+    "word": "TAXPREP",
+    "slug": "taxprep",
+    "label": "Tax preparers"
+  },
+  {
+    "word": "JANITORIAL",
+    "slug": "janitorial",
+    "label": "Commercial cleaning & janitorial"
+  },
+  {
+    "word": "DENTAL",
+    "slug": "dental",
+    "label": "Dental practices"
+  },
+  {
+    "word": "CHIRO",
+    "slug": "chiro",
+    "label": "Chiropractors"
+  },
+  {
+    "word": "PHYSIO",
+    "slug": "physio",
+    "label": "Physical therapy clinics"
+  },
+  {
+    "word": "VET",
+    "slug": "vet",
+    "label": "Veterinary clinics"
+  },
+  {
+    "word": "OPTOMETRY",
+    "slug": "optometry",
+    "label": "Optometrists"
+  },
+  {
+    "word": "THERAPY",
+    "slug": "therapy",
+    "label": "Therapy & counseling practices"
+  },
+  {
+    "word": "HOMECARE",
+    "slug": "homecare",
+    "label": "Home care agencies"
+  },
+  {
+    "word": "SALON",
+    "slug": "salon",
+    "label": "Hair salons & barbershops"
+  },
+  {
+    "word": "YOGA",
+    "slug": "yoga",
+    "label": "Yoga & pilates studios"
+  },
+  {
+    "word": "MASSAGE",
+    "slug": "massage",
+    "label": "Massage therapists"
+  },
+  {
+    "word": "NAILS",
+    "slug": "nails",
+    "label": "Nail salons"
+  },
+  {
+    "word": "TATTOO",
+    "slug": "tattoo",
+    "label": "Tattoo studios"
+  },
+  {
+    "word": "RESTAURANT",
+    "slug": "restaurant",
+    "label": "Restaurants"
+  },
+  {
+    "word": "BAKERY",
+    "slug": "bakery",
+    "label": "Cafes & bakeries"
+  },
+  {
+    "word": "CATERING",
+    "slug": "catering",
+    "label": "Caterers"
+  },
+  {
+    "word": "BREWERY",
+    "slug": "brewery",
+    "label": "Breweries & wineries"
+  },
+  {
+    "word": "VENUE",
+    "slug": "venue",
+    "label": "Event venues"
+  },
+  {
+    "word": "WEDDING",
+    "slug": "wedding",
+    "label": "Wedding planners"
+  },
+  {
+    "word": "PHOTO",
+    "slug": "photo",
+    "label": "Photographers"
+  },
+  {
+    "word": "BOUTIQUE",
+    "slug": "boutique",
+    "label": "Boutique retail shops"
+  },
+  {
+    "word": "ECOM",
+    "slug": "ecom",
+    "label": "E-commerce brands"
+  },
+  {
+    "word": "FLORIST",
+    "slug": "florist",
+    "label": "Florists"
+  },
+  {
+    "word": "TUTORING",
+    "slug": "tutoring",
+    "label": "Tutoring & test prep"
+  },
+  {
+    "word": "DAYCARE",
+    "slug": "daycare",
+    "label": "Daycares & preschools"
+  },
+  {
+    "word": "DANCE",
+    "slug": "dance",
+    "label": "Music & dance schools"
+  },
+  {
+    "word": "PETCARE",
+    "slug": "petcare",
+    "label": "Pet grooming & dog training"
+  },
+  {
+    "word": "AUTODEALER",
+    "slug": "autodealer",
+    "label": "Independent car dealers"
+  }
+]

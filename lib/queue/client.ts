@@ -75,6 +75,7 @@ export interface ProcessMessageJob {
   messageId: string;
   messageText: string;
   senderId: string;
+  requeueAttempt?: number;
 }
 
 export type DmQueueJob =

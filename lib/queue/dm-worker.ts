@@ -1,3 +1,4 @@
+import { handleLeadMessage, openLead } from "@/lib/leads/handle";
 import {
   classifySendError,
   hasLegacyUnconfirmedDelivery,
@@ -779,6 +780,16 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
           errorMessage: null,
         },
       });
+      // es-funnel: the DM asked for a name and email; their reply is read in processMessage.
+      if (automation.collectLead) {
+        await openLead({
+          workspaceId: automation.workspaceId,
+          automationId: automation.id,
+          instagramAccountId: automation.instagramAccountId,
+          igUserId: commenterId,
+          keyword: matchResult.matchedKeyword,
+        }).catch((error) => console.error("[DM Worker] Couldn't open the lead:", formatError(error)));
+      }
     } catch (error) {
       const sendError = classifySendError(error);
       // Retain reservations if the provider may have delivered the message.
@@ -1278,6 +1289,12 @@ async function processFollowUp(job: Job<ProcessFollowUpJob>): Promise<void> {
  * Dedup is per inbound message id, so each message triggers at most one reply.
  */
 async function processMessage(job: Job<ProcessMessageJob>): Promise<void> {
+  // es-funnel: a reply to an open name+email ask is handled there, never by the
+  // keyword triggers; then the reply's text leaves the stored job.
+  if (await handleLeadMessage(job.data)) {
+    await job.updateData({ ...job.data, messageText: "[lead reply]" });
+    return;
+  }
   const { instagramAccountId, messageId, messageText, senderId } = job.data;
 
   const automations = await prisma.automation.findMany({

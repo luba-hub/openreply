@@ -16,6 +16,8 @@ const {
   mockQueueAdd,
   mockReserveWorkspaceDMSend,
   mockReleaseWorkspaceDMReservation,
+  mockHandleLeadMessage,
+  mockOpenLead,
 } = vi.hoisted(() => ({
   mockPrisma: {
     zernioConnection: { findUnique: vi.fn() },
@@ -53,6 +55,14 @@ const {
   mockQueueAdd: vi.fn(),
   mockReserveWorkspaceDMSend: vi.fn(),
   mockReleaseWorkspaceDMReservation: vi.fn(),
+  mockHandleLeadMessage: vi.fn(),
+  mockOpenLead: vi.fn(),
+}));
+
+// es-funnel's lead step has its own tests (leads.test.ts); here it answers "not a lead reply".
+vi.mock("@/lib/leads/handle", () => ({
+  handleLeadMessage: mockHandleLeadMessage,
+  openLead: mockOpenLead,
 }));
 
 vi.mock("@/lib/db/client", () => ({
@@ -222,6 +232,8 @@ function createMockPostbackJob(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockHandleLeadMessage.mockResolvedValue(false);
+  mockOpenLead.mockResolvedValue(null);
   mockPrisma.postbackDelivery.create.mockReset().mockResolvedValue({});
   mockPrisma.postbackDelivery.delete.mockReset().mockResolvedValue({});
 
@@ -1763,4 +1775,29 @@ it("retains the public reply claim if sending succeeded but its log write failed
   await process({ ...createMockJob(), id: "next-poll" });
   expect(sendCommentReply).toHaveBeenCalledTimes(1);
   expect(mockSendPrivateReply).toHaveBeenCalledTimes(1);
+});
+
+describe("DM Worker — es-funnel lead step", () => {
+  it("opens the person's lead after the name+email ask goes out on a collectLead campaign", async () => {
+    mockPrisma.automation.findMany.mockResolvedValue([{ ...mockAutomation, collectLead: true }]);
+    mockMatchKeywords.mockReturnValue({ matched: true, matchedKeyword: "ROOFING" });
+    await getProcessor()(createMockJob());
+    expect(mockOpenLead).toHaveBeenCalledWith(expect.objectContaining({ igUserId: mockJobData.commenterId, keyword: "ROOFING", automationId: mockAutomation.id }));
+  });
+
+  it("opens no lead on a campaign that doesn't collect one", async () => {
+    await getProcessor()(createMockJob());
+    expect(mockOpenLead).not.toHaveBeenCalled();
+  });
+
+  it("a reply to an open ask goes to the lead step only, and its text leaves the stored job", async () => {
+    mockHandleLeadMessage.mockResolvedValue(true);
+    mockPrisma.automation.findMany.mockResolvedValue([{ ...mockAutomation, dmTriggerEnabled: true }]);
+    const updateData = vi.fn();
+    const job = { name: "process-message", data: { instagramAccountId: "ig_456", messageId: "mid_1", messageText: "Ann ann@example.com", senderId: "commenter_999" }, id: "m1", attemptsMade: 0, updateData };
+    await getProcessor()(job as never);
+    expect(mockPrisma.automation.findMany).not.toHaveBeenCalled();
+    expect(mockSendDirectMessage).not.toHaveBeenCalled();
+    expect(updateData).toHaveBeenCalledWith(expect.objectContaining({ messageText: "[lead reply]" }));
+  });
 });

@@ -219,6 +219,9 @@ model Automation {
   publicReplyMessages String[] @default([])
   isActive       Boolean @default(true)
   wholeWordMatch Boolean @default(true)
+  // es-funnel: the DM asks for a first name and email; the reply goes to MailerLite
+  // with the matched word's niche, then the niche's blueprint link is sent.
+  collectLead    Boolean @default(false)
   reportShareSlug    String? @unique
   reportShareEnabled Boolean @default(true)
 
@@ -230,10 +233,40 @@ model Automation {
   dmLogs           DmLog[]
   trackedLinks     TrackedLink[]
   linkClicks       LinkClick[]
+  leads            Lead[]
 
   @@index([workspaceId])
   @@index([instagramAccountId])
   @@index([postId])
+}
+
+// es-funnel: one open name+email ask per person per account. Holds the state and the
+// matched word only; the reply's name and email go to MailerLite and are never stored.
+model Lead {
+  id                 String    @id @default(cuid())
+  workspaceId        String
+  automationId       String
+  instagramAccountId String
+  igUserId           String
+  keyword            String
+  state              LeadState @default(ASKED)
+  askedAt            DateTime  @default(now())
+  syncedAt           DateTime?
+  blueprintSentAt    DateTime?
+  updatedAt          DateTime  @updatedAt
+
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@unique([instagramAccountId, igUserId])
+  @@index([automationId])
+}
+
+enum LeadState {
+  ASKED
+  REASKED
+  SYNCED
+  DONE
+  STOPPED
 }
 
 model DmLog {
